@@ -6,9 +6,9 @@ name: GEN
 # Only run on pull requests and only for Python files.
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 
 jobs:
@@ -29,8 +29,23 @@ jobs:
 
     - name: Candidate
       run: |
-        ssh-keygen -G candidate-${{ matrix.size }} -b ${{ matrix.size }}
+        ssh-keygen -M generate -O bits=${{ matrix.size }} candidate-${{ matrix.size }}
 
     - name: Validate
       run: |
-        ssh-keygen -f candidate-${{ matrix.size }} -T validated-${{ matrix.size }}
+        ssh-keygen -M screen -f candidate-${{ matrix.size }} validated-${{ matrix.size }}
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: moduli-${{ matrix.size }}
+        path: validated-*
+
+  agregate:
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/download-artifact@v2
+
+    - name: Debug
+      run: ls
