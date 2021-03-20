@@ -1,0 +1,36 @@
+#
+# Generated the prime numbers and generated used by SSH DH Group KEX.
+#
+name: GEN
+
+# Only run on pull requests and only for Python files.
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+
+jobs:
+
+  generate:
+    name: 'Size ${{ matrix.size }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 8192]
+        size: [ 1024, 1536, 2048]
+
+    runs-on: ubuntu-latest
+    steps:
+
+    # Make sure we don't have multiple jobs
+    - uses: chevah/auto-cancel-redundant-job@v1
+
+    - name: Candidate
+      run: |
+        ssh-keygen -G candidate-${{ matrix.size }} -b ${{ matrix.size }}
+
+    - name: Validate
+      run: |
+        ssh-keygen -f candidate-${{ matrix.size }} -T validated-${{ matrix.size }}
