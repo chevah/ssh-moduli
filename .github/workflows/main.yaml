@@ -14,12 +14,12 @@ on:
 jobs:
 
   generate:
-    name: 'Size ${{ matrix.size }}'
+    name: 'generate ${{ matrix.size }}'
     strategy:
       fail-fast: false
       matrix:
-        # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 8192]
-        size: [ 1024, 1536, 2048]
+        # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
+        size: [ 1024, 1536, 2048, 4096, 6144]
 
     runs-on: ubuntu-latest
     steps:
@@ -37,10 +37,10 @@ jobs:
 
     - uses: actions/upload-artifact@v2
       with:
-        name: moduli-${{ matrix.size }}
+        name: partial
         path: validated-*
 
-  agregate:
+  combine:
     needs: generate
     runs-on: ubuntu-latest
     steps:
@@ -48,4 +48,17 @@ jobs:
     - uses: actions/download-artifact@v2
 
     - name: Debug
-      run: ls
+      run: ls -al *
+
+    - name: OpenSSH /etc/ssh/moduli
+      run: cat validated-* > etc_ssh_moduli
+
+    - name: Chevah Python Dict
+      run: python chevah_format.py validated- chevah_moduli.py
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: result
+        path: |
+          etc_ssh_moduli
+          chevah_moduli.py
