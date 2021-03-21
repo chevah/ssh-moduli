@@ -28,6 +28,7 @@ def generate_ssh_moduli(input_path, output_path):
         for line in stream.readlines():
             line = line.strip()
             if not line or line[0] == '#':
+                # Ignore empty lines or comments.
                 continue
 
             tim, typ, tst, tri, bits, gen, mod = line.split()

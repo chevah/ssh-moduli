@@ -5,10 +5,22 @@ Helper to generate the prime numbers used in the SSH Diffie-Hellman Group Exchan
 
 The resulting files in OpenSSH format are stored as artifacts.
 
-Needs latest OpenSSH::
+See the artifacts for each scheduled run:
+https://github.com/chevah/ssh-moduli/actions
+
+OpenSSH upstream generation script which generates the candidates twice:
+https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/moduli-gen/
+
+You can see the OpenSSH portable moduli file here.
+This is pulled by Debian and Ubuntu...and I guess other distributions.
+Updated 2 or 3 times per year.
+https://github.com/openssh/openssh-portable/commits/master/moduli
+
+It needs latest OpenSSH::
 
     ssh-keygen -M generate -O bits=2048 moduli-2048.candidates
     ssh-keygen -M screen -f moduli-2048.candidates moduli-2048
+
 
 Limits for GitHub Hosted VM [1]:
 * 6 hours per job

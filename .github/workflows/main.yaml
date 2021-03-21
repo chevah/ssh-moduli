@@ -37,13 +37,15 @@ jobs:
     needs: prevent_duplicates
     strategy:
       matrix:
-        size: [ 1024, 1536,  2048, 3072, 4096, 6144 ]
+        size: [ 1024, 1536,  2048, 3072, 4096 ]
         split: [2]
         include:
+          - size: 6144
+            split: 4
           - size: 7680
-            split: 6
+            split: 10
           - size: 8192
-            split: 6
+            split: 10
 
 
     runs-on: ubuntu-latest
@@ -51,8 +53,19 @@ jobs:
 
     - name: Candidate
       run: |
-        ssh-keygen -M generate -O bits=${{ matrix.size }} full
-        split -d -a 1 -n l/${{ matrix.split }} full g.
+
+        ssh-keygen -M generate -O bits=${{ matrix.size }} full.1 &
+        PS1=$!
+        ssh-keygen -M generate -O bits=${{ matrix.size }} full.2 &
+        PS2=$!
+
+        wait $PS1 $PS2
+
+        cat full.2 >> full.1
+
+        # Split as round-robin as it looks like the first batch alwasy
+        # takes longer to validate.
+        split -d -a 1 -n r/${{ matrix.split }} full.1 g.
 
     - uses: actions/upload-artifact@v2
       with:
@@ -66,32 +79,50 @@ jobs:
     name: 'ssh-keygen -M screen ${{ matrix.size }}'
     strategy:
       matrix:
-        size: [ 1024, 1536, 2048, 3072, 4096, 6144 ]
+        size: [ 1024, 1536, 2048, 3072, 4096 ]
         split: [2]
         start: [0]
 
         # For big primes it can take 30 hours on a single CPU.
         include:
+          - size: 6144
+            split: 4
+            start: 0
+          - size: 6144
+            split: 4
+            start: 2
+
           - size: 7680
-            split: 6
+            split: 10
             start: 0
           - size: 7680
-            split: 6
+            split: 10
             start: 2
           - size: 7680
-            split: 6
+            split: 10
             start: 4
+          - size: 7680
+            split: 10
+            start: 6
+          - size: 7680
+            split: 10
+            start: 8
 
           - size: 8192
-            split: 6
+            split: 10
             start: 0
           - size: 8192
-            split: 6
+            split: 10
             start: 2
           - size: 8192
-            split: 6
+            split: 10
             start: 4
-
+          - size: 8192
+            split: 10
+            start: 6
+          - size: 8192
+            split: 10
+            start: 8
 
     runs-on: ubuntu-latest
     steps:
@@ -136,10 +167,17 @@ jobs:
         name: validated
 
     - name: Debug
-      run: ls -al *
+      run: |
+        ls -al *
+        wc -l v-*
 
     - name: OpenSSH /etc/ssh/moduli
-      run: cat v-* | sort -u > etc_ssh_moduli
+      run: |
+        now=`date -Iminutes`
+        echo "# https://github.com/chevah/ssh-moduli/ $now" > etc_ssh_moduli
+        echo "# Time Type Tests Tries Size Generator Modulus" >> etc_ssh_moduli
+
+        cat v-* | sort -u >> etc_ssh_moduli
 
     - name: Chevah Python Dict
       run: python chevah_format.py etc_ssh_moduli chevah_moduli.py
@@ -163,4 +201,5 @@ jobs:
           chevah_moduli.py
 
     - name: Artifacts link
-      run: echo ${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}
+      run: |
+        echo ${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}#artifacts
