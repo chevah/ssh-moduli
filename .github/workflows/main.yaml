@@ -12,7 +12,7 @@ name: CD
 
 # Only run on pull requests and only for Python files.
 on:
-  # Pull requests are enabled for testing
+  # Pull requests are enabled for development.
   pull_request:
     branches: [ main ]
 
@@ -23,8 +23,16 @@ on:
 
 jobs:
 
+  prevent_duplicates:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: chevah/auto-cancel-redundant-job@v1
+    - uses: chevah/python-info-action@v1
+
+
   generate:
     name: 'ssh-keygen -M generate ${{ matrix.size }}'
+    needs: prevent_duplicates
     strategy:
       fail-fast: false
       matrix:
@@ -33,19 +41,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    # Make sure we don't have multiple jobs
-    - uses: chevah/auto-cancel-redundant-job@v1
-
-    - uses: chevah/python-info-action@v1
-
     - name: Candidate
       run: |
         ssh-keygen -M generate -O bits=${{ matrix.size }} g-${{ matrix.size }}
 
     - uses: actions/upload-artifact@v2
       with:
-        name: candidate
-        path: g-*
+        name: candidate-${{ matrix.size }}
+        path: g-${{ matrix.size }}
         retention-days: 1
 
 
@@ -87,28 +90,33 @@ jobs:
     steps:
 
     - uses: actions/download-artifact@v2
+      with:
+        name: candidate-${{ matrix.size }}
 
     - name: Validate
       run: |
         # Prepare all input as shell variables.
         size=${{ matrix.size }}
-        total=`wc -l candidate/g-${{ matrix.size }} | cut -f 1 -d ' '`
-        chunk=$(( $total / ${{ matrix.split }} ))
-        start=$(( ${{ matrix.start }} * $chunk ))
-        middle==$(( $start + $chunk ))
-        # The chunk is rounded down so we extend a big on the second job.
-        second_chunk=$(( $chunk + 1 ))
+        split=${{ matrix.split }}
         first_index=${{ matrix.start }}
         second_index=$(( $first_index + 1 ))
+
+        total=`wc -l candidate/g-$size | cut -f 1 -d ' '`
+        chunk=$(( $total / $split ))
+        start=$(( $first_index * $chunk ))
+        middle==$(( $start + $chunk ))
+        # The chunk is rounded down so we extend a big on the second job.
+        # There might be an overlap but we remove duplicates at the end.
+        second_chunk=$(( $chunk + $matrix.split ))
 
         # Some debugging.
         ls -al *
         declare -p
 
         # The action.
-        ssh-keygen -M screen -f candidate/g-$size -O start-line=$start -O lines=$middle v-$first_index.$size &
+        ssh-keygen -M screen -f g-$size -O start-line=$start -O lines=$chunk v-$first_index.$size &
         PS1=$!
-        ssh-keygen -M screen -f candidate/g-$size -O start-line=$middle -O lines=$second_chunk v-$second_index.$size &
+        ssh-keygen -M screen -f g-$size -O start-line=$middle -O lines=$second_chunk v-$second_index.$size &
         PS2=$!
 
         wait $PS1 $PS2
@@ -131,7 +139,7 @@ jobs:
       run: ls -al *
 
     - name: OpenSSH /etc/ssh/moduli
-      run: cat validated/* > etc_ssh_moduli
+      run: cat validated/* | sort -u > etc_ssh_moduli
 
     - name: Chevah Python Dict
       run: python chevah_format.py etc_ssh_moduli chevah_moduli.py
