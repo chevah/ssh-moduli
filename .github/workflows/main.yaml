@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
-        size: [ 1024, 1536, 2048, 4096, 6144]
+        size: [ 1024, 1536, 2048, 4096, 6144, 7680, 8192]
 
     runs-on: ubuntu-latest
     steps:
