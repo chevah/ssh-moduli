@@ -8,6 +8,8 @@
 # A job can run for 6 hours... so 12 hours of validation time per job.
 # With 3 jobs for a certain size we should do it.
 #
+# It generates primes for 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192
+#
 name: CD
 
 # Only run on pull requests and only for Python files.
@@ -34,21 +36,28 @@ jobs:
     name: 'ssh-keygen -M generate ${{ matrix.size }}'
     needs: prevent_duplicates
     strategy:
-      fail-fast: false
       matrix:
-        size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
+        size: [ 1024, 1536,  2048, 3072, 4096, 6144 ]
+        split: [2]
+        include:
+          - size: 7680
+            split: 6
+          - size: 8192
+            split: 6
+
 
     runs-on: ubuntu-latest
     steps:
 
     - name: Candidate
       run: |
-        ssh-keygen -M generate -O bits=${{ matrix.size }} g-${{ matrix.size }}
+        ssh-keygen -M generate -O bits=${{ matrix.size }} full
+        split -d -a 1 -n l/${{ matrix.split }} full g.
 
     - uses: actions/upload-artifact@v2
       with:
         name: candidate-${{ matrix.size }}
-        path: g-${{ matrix.size }}
+        path: g.*
         retention-days: 1
 
 
@@ -56,10 +65,8 @@ jobs:
     needs: generate
     name: 'ssh-keygen -M screen ${{ matrix.size }}'
     strategy:
-      fail-fast: false
       matrix:
-        # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
-        size: [ 1024, 1536, 2048, 3072, 4096, 6144]
+        size: [ 1024, 1536, 2048, 3072, 4096, 6144 ]
         split: [2]
         start: [0]
 
@@ -97,26 +104,16 @@ jobs:
       run: |
         # Prepare all input as shell variables.
         size=${{ matrix.size }}
-        split=${{ matrix.split }}
         first_index=${{ matrix.start }}
         second_index=$(( $first_index + 1 ))
-
-        total=`wc -l candidate/g-$size | cut -f 1 -d ' '`
-        chunk=$(( $total / $split ))
-        start=$(( $first_index * $chunk ))
-        middle==$(( $start + $chunk ))
-        # The chunk is rounded down so we extend a big on the second job.
-        # There might be an overlap but we remove duplicates at the end.
-        second_chunk=$(( $chunk + $matrix.split ))
-
         # Some debugging.
         ls -al *
         declare -p
 
         # The action.
-        ssh-keygen -M screen -f g-$size -O start-line=$start -O lines=$chunk v-$first_index.$size &
+        ssh-keygen -M screen -f g.$first_index  v-$size-$first_index &
         PS1=$!
-        ssh-keygen -M screen -f g-$size -O start-line=$middle -O lines=$second_chunk v-$second_index.$size &
+        ssh-keygen -M screen -f g.$second_index  v-$size-$second_index &
         PS2=$!
 
         wait $PS1 $PS2
@@ -133,16 +130,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+    - uses: actions/checkout@v2
     - uses: actions/download-artifact@v2
+      with:
+        name: validated
 
     - name: Debug
       run: ls -al *
 
     - name: OpenSSH /etc/ssh/moduli
-      run: cat validated/* | sort -u > etc_ssh_moduli
+      run: cat v-* | sort -u > etc_ssh_moduli
 
     - name: Chevah Python Dict
       run: python chevah_format.py etc_ssh_moduli chevah_moduli.py
+
+    # Clean all previous artifact to reduce the noise on the artifacts page.
+    - uses: chevah/delete-artifact@1-glob-support
+      with:
+        name: '**'
+        useGlob: true
 
     - uses: actions/upload-artifact@v2
       with:
