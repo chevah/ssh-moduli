@@ -1,7 +1,14 @@
 #
 # Generated the prime numbers and generated used by SSH DH Group KEX.
 #
-name: GEN
+# Generating is fast. Max 15 minutes.
+# Validating is slow. 30 hours.
+#
+# Since the GitHub VM have 2 CPU each job will run 2 validating tasks.
+# A job can run for 6 hours... so 12 hours of validation time per job.
+# With 3 jobs for a certain size we should do it.
+#
+name: CD
 
 # Only run on pull requests and only for Python files.
 on:
@@ -17,18 +24,19 @@ on:
 jobs:
 
   generate:
-    name: 'generate ${{ matrix.size }}'
+    name: 'ssh-keygen -M generate ${{ matrix.size }}'
     strategy:
       fail-fast: false
       matrix:
-        # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
-        size: [1024, 1536, 2048, 3072, 4096, 6144]
+        size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
 
     runs-on: ubuntu-latest
     steps:
 
     # Make sure we don't have multiple jobs
     - uses: chevah/auto-cancel-redundant-job@v1
+
+    - uses: chevah/python-info-action@v1
 
     - name: Candidate
       run: |
@@ -43,12 +51,37 @@ jobs:
 
   screen:
     needs: generate
-    name: 'screen ${{ matrix.size }}'
+    name: 'ssh-keygen -M screen ${{ matrix.size }}'
     strategy:
       fail-fast: false
       matrix:
         # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
-        size: [1024, 1536, 2048, 3072, 4096, 6144]
+        size: [ 1024, 1536, 2048, 3072, 4096, 6144]
+        split: [2]
+        start: [0]
+
+        # For big primes it can take 30 hours on a single CPU.
+        include:
+          - size: 7680
+            split: 6
+            start: 0
+          - size: 7680
+            split: 6
+            start: 2
+          - size: 7680
+            split: 6
+            start: 4
+
+          - size: 8192
+            split: 6
+            start: 0
+          - size: 8192
+            split: 6
+            start: 2
+          - size: 8192
+            split: 6
+            start: 4
+
 
     runs-on: ubuntu-latest
     steps:
@@ -57,18 +90,32 @@ jobs:
 
     - name: Validate
       run: |
-        ls -al *
+        # Prepare all input as shell variables.
+        size=${{ matrix.size }}
         total=`wc -l candidate/g-${{ matrix.size }} | cut -f 1 -d ' '`
-        half=$(( $total / 2 ))
-        ssh-keygen -M screen -f candidate/g-${{ matrix.size }} -O lines=$half v-1.${{ matrix.size }} &
+        chunk=$(( $total / ${{ matrix.split }} ))
+        start=$(( ${{ matrix.start }} * $chunk ))
+        middle==$(( $start + $chunk ))
+        # The chunk is rounded down so we extend a big on the second job.
+        second_chunk=$(( $chunk + 1 ))
+        first_index=${{ matrix.start }}
+        second_index=$(( $first_index + 1 ))
+
+        # Some debugging.
+        ls -al *
+        declare -p
+
+        # The action.
+        ssh-keygen -M screen -f candidate/g-$size -O start-line=$start -O lines=$middle v-$first_index.$size &
         PS1=$!
-        ssh-keygen -M screen -f candidate/g-${{ matrix.size }} -O start-line=$half v-2.${{ matrix.size }} &
+        ssh-keygen -M screen -f candidate/g-$size -O start-line=$middle -O lines=$second_chunk v-$second_index.$size &
         PS2=$!
+
         wait $PS1 $PS2
 
     - uses: actions/upload-artifact@v2
       with:
-        name: validate
+        name: validated
         path: v-*
         retention-days: 1
 
