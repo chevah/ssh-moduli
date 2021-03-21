@@ -5,11 +5,14 @@ name: GEN
 
 # Only run on pull requests and only for Python files.
 on:
-  push:
-    branches: [ main ]
+  # Pull requests are enabled for testing
   pull_request:
     branches: [ main ]
 
+  # https://crontab.guru
+  schedule:
+    # At 01:00 on every 2 weeks on Saturday
+    - cron: '0 1 1-7,15-21 * 6'
 
 jobs:
 
@@ -19,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
-        size: [ 1024, 1536, 2048, 4096, 6144, 7680, 8192]
+        size: [1024, 1536, 2048, 3072, 4096, 6144]
 
     runs-on: ubuntu-latest
     steps:
@@ -29,19 +32,49 @@ jobs:
 
     - name: Candidate
       run: |
-        ssh-keygen -M generate -O bits=${{ matrix.size }} candidate-${{ matrix.size }}
-
-    - name: Validate
-      run: |
-        ssh-keygen -M screen -f candidate-${{ matrix.size }} validated-${{ matrix.size }}
+        ssh-keygen -M generate -O bits=${{ matrix.size }} g-${{ matrix.size }}
 
     - uses: actions/upload-artifact@v2
       with:
-        name: partial
-        path: validated-*
+        name: candidate
+        path: g-*
+        retention-days: 1
+
+
+  screen:
+    needs: generate
+    name: 'screen ${{ matrix.size }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        # size: [ 1024, 1536, 2048, 3072, 4096, 6144, 7680, 8192]
+        size: [1024, 1536, 2048, 3072, 4096, 6144]
+
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/download-artifact@v2
+
+    - name: Validate
+      run: |
+        ls -al *
+        total=`wc -l candidate/g-${{ matrix.size }} | cut -f 1 -d ' '`
+        half=$(( $total / 2 ))
+        ssh-keygen -M screen -f candidate/g-${{ matrix.size }} -O lines=$half v-1.${{ matrix.size }} &
+        PS1=$!
+        ssh-keygen -M screen -f candidate/g-${{ matrix.size }} -O start-line=$half v-2.${{ matrix.size }} &
+        PS2=$!
+        wait $PS1 $PS2
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: validate
+        path: v-*
+        retention-days: 1
+
 
   combine:
-    needs: generate
+    needs: screen
     runs-on: ubuntu-latest
     steps:
 
@@ -51,14 +84,22 @@ jobs:
       run: ls -al *
 
     - name: OpenSSH /etc/ssh/moduli
-      run: cat validated-* > etc_ssh_moduli
+      run: cat validated/* > etc_ssh_moduli
 
     - name: Chevah Python Dict
-      run: python chevah_format.py validated- chevah_moduli.py
+      run: python chevah_format.py etc_ssh_moduli chevah_moduli.py
 
     - uses: actions/upload-artifact@v2
       with:
-        name: result
+        name: etc_ssh_moduli
         path: |
           etc_ssh_moduli
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: chevah_moduli
+        path: |
           chevah_moduli.py
+
+    - name: Artifacts link
+      run: echo ${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }}
