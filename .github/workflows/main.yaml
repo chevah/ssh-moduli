@@ -33,7 +33,7 @@ jobs:
 
 
   generate:
-    name: 'ssh-keygen -M generate ${{ matrix.size }}'
+    name: 'generate ${{ matrix.size }}'
     needs: prevent_duplicates
     strategy:
       matrix:
@@ -43,7 +43,7 @@ jobs:
           - size: 6144
             split: 4
           - size: 7680
-            split: 10
+            split: 12
           - size: 8192
             split: 10
 
@@ -65,18 +65,18 @@ jobs:
 
         # Split as round-robin as it looks like the first batch alwasy
         # takes longer to validate.
-        split -d -a 1 -n r/${{ matrix.split }} full.1 g.
+        split -d -a 2 -n r/${{ matrix.split }} full.1 g-${{ matrix.size }}.
 
     - uses: actions/upload-artifact@v2
       with:
         name: candidate-${{ matrix.size }}
-        path: g.*
+        path: g-*
         retention-days: 1
 
 
   screen:
     needs: generate
-    name: 'ssh-keygen -M screen ${{ matrix.size }}'
+    name: 'screen ${{ matrix.size }}'
     strategy:
       matrix:
         size: [ 1024, 1536, 2048, 3072, 4096 ]
@@ -93,20 +93,23 @@ jobs:
             start: 2
 
           - size: 7680
-            split: 10
+            split: 12
             start: 0
           - size: 7680
-            split: 10
+            split: 12
             start: 2
           - size: 7680
-            split: 10
+            split: 12
             start: 4
           - size: 7680
-            split: 10
+            split: 12
             start: 6
           - size: 7680
-            split: 10
+            split: 12
             start: 8
+          - size: 7680
+            split: 12
+            start: 10
 
           - size: 8192
             split: 10
@@ -137,14 +140,16 @@ jobs:
         size=${{ matrix.size }}
         first_index=${{ matrix.start }}
         second_index=$(( $first_index + 1 ))
+        first_index=`printf %02d $first_index`
+        second_index=`printf %02d $second_index`
         # Some debugging.
         ls -al *
         declare -p
 
         # The action.
-        ssh-keygen -M screen -f g.$first_index  v-$size-$first_index &
+        ssh-keygen -M screen -f g-$size.$first_index  v-$size-$first_index &
         PS1=$!
-        ssh-keygen -M screen -f g.$second_index  v-$size-$second_index &
+        ssh-keygen -M screen -f g-$size.$second_index  v-$size-$second_index &
         PS2=$!
 
         wait $PS1 $PS2
