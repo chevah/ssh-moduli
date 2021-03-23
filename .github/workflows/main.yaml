@@ -20,8 +20,8 @@ on:
 
   # https://crontab.guru
   schedule:
-    # At 01:00 on every 2 weeks on Saturday
-    - cron: '0 1 1-7,15-21 * 6'
+    # At 02:00 on Saturday
+    - cron: '0 2 * * 6'
 
 jobs:
 
@@ -45,7 +45,7 @@ jobs:
           - size: 7680
             split: 12
           - size: 8192
-            split: 10
+            split: 12
 
 
     runs-on: ubuntu-latest
@@ -55,17 +55,26 @@ jobs:
       run: |
 
         ssh-keygen -M generate -O bits=${{ matrix.size }} full.1 &
-        PS1=$!
+        PID1=$!
         ssh-keygen -M generate -O bits=${{ matrix.size }} full.2 &
-        PS2=$!
+        PID2=$!
 
-        wait $PS1 $PS2
+        # After getting the PID of each run wait for both
+        # and record any failure signaled via a non-zero exit code.
+        FAIL=0
+        wait $PID1 || let "FAIL+=1"
+        wait $PID2 || let "FAIL+=1"
 
         cat full.2 >> full.1
 
+        # Split as screening a single file on GitHub can't take more than
+        # 6 hours.
+        # We split with 2 digits as 7680 requires 12 chunks.
         # Split as round-robin as it looks like the first batch alwasy
         # takes longer to validate.
         split -d -a 2 -n r/${{ matrix.split }} full.1 g-${{ matrix.size }}.
+
+        exit $FAIL
 
     - uses: actions/upload-artifact@v2
       with:
@@ -112,20 +121,23 @@ jobs:
             start: 10
 
           - size: 8192
-            split: 10
+            split: 13
             start: 0
           - size: 8192
-            split: 10
+            split: 12
             start: 2
           - size: 8192
-            split: 10
+            split: 12
             start: 4
           - size: 8192
-            split: 10
+            split: 12
             start: 6
           - size: 8192
-            split: 10
+            split: 12
             start: 8
+          - size: 8192
+            split: 12
+            start: 10
 
     runs-on: ubuntu-latest
     steps:
@@ -148,11 +160,14 @@ jobs:
 
         # The action.
         ssh-keygen -M screen -f g-$size.$first_index  v-$size-$first_index &
-        PS1=$!
+        PID1=$!
         ssh-keygen -M screen -f g-$size.$second_index  v-$size-$second_index &
-        PS2=$!
+        PID2=$!
 
-        wait $PS1 $PS2
+        FAIL=0
+        wait $PID1 || let "FAIL+=1"
+        wait $PID2 || let "FAIL+=1"
+        exit $FAIL
 
     - uses: actions/upload-artifact@v2
       with:
