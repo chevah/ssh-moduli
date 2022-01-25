@@ -45,7 +45,7 @@ jobs:
           - size: 7680
             split: 12
           - size: 8192
-            split: 14
+            split: 24
 
 
     runs-on: ubuntu-latest
@@ -121,25 +121,25 @@ jobs:
             start: 10
 
           - size: 8192
-            split: 14
+            split: 24
             start: 0
           - size: 8192
-            split: 14
+            split: 24
             start: 2
           - size: 8192
-            split: 14
+            split: 24
             start: 4
           - size: 8192
-            split: 14
+            split: 24
             start: 6
           - size: 8192
-            split: 14
+            split: 24
             start: 8
           - size: 8192
-            split: 14
+            split: 24
             start: 10
           - size: 8192
-            split: 14
+            split: 24
             start: 12
 
     runs-on: ubuntu-latest
