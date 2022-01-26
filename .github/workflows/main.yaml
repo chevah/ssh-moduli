@@ -102,6 +102,9 @@ jobs:
             start: 2
           - size: 6144
             split: 8
+            start: 4
+          - size: 6144
+            split: 8
             start: 6
 
           - size: 7680
