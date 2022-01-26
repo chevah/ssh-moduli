@@ -41,9 +41,9 @@ jobs:
         split: [2]
         include:
           - size: 6144
-            split: 4
+            split: 8
           - size: 7680
-            split: 12
+            split: 16
           - size: 8192
             split: 24
 
@@ -95,30 +95,39 @@ jobs:
         # For big primes it can take 30 hours on a single CPU.
         include:
           - size: 6144
-            split: 4
+            split: 8
             start: 0
           - size: 6144
-            split: 4
+            split: 8
             start: 2
+          - size: 6144
+            split: 8
+            start: 6
 
           - size: 7680
-            split: 12
+            split: 16
             start: 0
           - size: 7680
-            split: 12
+            split: 16
             start: 2
           - size: 7680
-            split: 12
+            split: 16
             start: 4
           - size: 7680
-            split: 12
+            split: 16
             start: 6
           - size: 7680
-            split: 12
+            split: 16
             start: 8
           - size: 7680
-            split: 12
+            split: 16
             start: 10
+          - size: 7680
+            split: 16
+            start: 12
+          - size: 7680
+            split: 16
+            start: 14
 
           - size: 8192
             split: 24
