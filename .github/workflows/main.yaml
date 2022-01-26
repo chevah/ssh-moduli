@@ -141,6 +141,21 @@ jobs:
           - size: 8192
             split: 24
             start: 12
+          - size: 8192
+            split: 24
+            start: 14
+          - size: 8192
+            split: 24
+            start: 16
+          - size: 8192
+            split: 24
+            start: 18
+          - size: 8192
+            split: 24
+            start: 20
+          - size: 8192
+            split: 24
+            start: 22
 
     runs-on: ubuntu-latest
     steps:
