@@ -8,6 +8,10 @@ The resulting files in OpenSSH format are stored as artifacts.
 See the artifacts for each scheduled run:
 https://github.com/chevah/ssh-moduli/actions
 
+You can retrieve the links for the already generated artifacts
+via the GitHub API using this long command::
+
+    curl -s https://api.github.com/repos/chevah/ssh-moduli/actions/artifacts\?per_page\=9 | jq '[.artifacts[] | {name : .name, archive_download_url : .archive_download_url}]' | jq -r '.[] | select (.name == "etc_ssh_moduli") | .archive_download_url'
 OpenSSH upstream generation script which generates the candidates twice:
 https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/moduli-gen/
 
