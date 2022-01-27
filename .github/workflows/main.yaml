@@ -235,9 +235,6 @@ jobs:
 
         cat v-* | sort -u >> etc_ssh_moduli
 
-    - name: Chevah Python Dict
-      run: python chevah_format.py etc_ssh_moduli chevah_moduli.py
-
     # Clean all previous artifact to reduce the noise on the artifacts page.
     - uses: chevah/delete-artifact@1-glob-support
       with:
@@ -249,12 +246,6 @@ jobs:
         name: etc_ssh_moduli
         path: |
           etc_ssh_moduli
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: chevah_moduli
-        path: |
-          chevah_moduli.py
 
     - name: Artifacts link
       run: |
