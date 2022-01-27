@@ -20,8 +20,8 @@ on:
 
   # https://crontab.guru
   schedule:
-    # At 02:00 on Saturday
-    - cron: '0 2 * * 6'
+    # Once a month
+    - cron: '0 2 1 * *'
 
 jobs:
 
