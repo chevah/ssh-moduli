@@ -29,11 +29,11 @@ Limits for GitHub Hosted VM [1]:
 
 Generating the candidates is fast. About 15 minutes for 8k.
 
-Validating is slow:
+Validating is slow. Some rough estimates:
 * 4096 - 1 hour
-* 6144 - 10 hours
-* 7680 - 30 hours
-* 8192
+* 6144 - 8 hours
+* 7680 - 20 hours
+* 8192 - 24 hours
 
 
 [1] https://docs.github.com/en/actions/reference/usage-limits-billing-and-administration#usage-limits
